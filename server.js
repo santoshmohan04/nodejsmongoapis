@@ -7,7 +7,7 @@ const path = require("path");
 const connectDB = require('./db'); // Import MongoDB connection
 const Employee = require('./models/Employee'); // Import Employee model
 const fastifyPlugin = require('fastify-plugin');
-const fastifyCors = require('fastify-cors');
+const fastifyCors = require('@fastify/cors');
 
 // Require the fastify framework and instantiate it
 const fastify = require("fastify")({
