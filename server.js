@@ -4,16 +4,71 @@
  */
 
 const path = require("path");
+const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./db'); // Import MongoDB connection
 const Employee = require('./models/Employee'); // Import Employee model
+
+const app = express();
 
 // Require the fastify framework and instantiate it
 const fastify = require("fastify")({
   // Set this to true for detailed logging:
   logger: false,
 });
+
+// Connect to MongoDB
+connectDB();
+
+// Enable CORS for API requests (adjust allowed origins as needed)
+fastify.use(cors({ origin: '*' }));
+
+// Parse incoming request bodies in JSON format
+fastify.use(bodyParser.json());
+
+//API routes defined below
+fastify.post('/employees', async (req, res) => {
+    try {
+        const newEmployee = new Employee(req.body);
+        const savedEmployee = await newEmployee.save();
+        res.status(201).json(savedEmployee);
+    } catch (error)   
+ {
+        console.error('Error creating employee:', error);
+        res.status(500).json({ message:   
+ 'Error creating employee' });
+    }
+});
+
+fastify.get('/employees', async (req, res) => {
+    try {
+        const employees = await Employee.find();
+        res.json(employees);
+    } catch (error) {
+        console.error('Error fetching employees:', error);
+        res.status(500).json({   
+ message: 'Error fetching employees'   
+ });
+    }
+});
+
+fastify.put('/employees/:id', async (req, res) => {
+  try {
+    const employee = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true,   
+ runValidators: true });
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    res.json(employee);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message:   
+ 'Server error' });
+  }
+});
+
+
 
 // ADD FAVORITES ARRAY VARIABLE FROM TODO HERE
 
