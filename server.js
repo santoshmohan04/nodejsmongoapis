@@ -4,13 +4,11 @@
  */
 
 const path = require("path");
-const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./db'); // Import MongoDB connection
 const Employee = require('./models/Employee'); // Import Employee model
-
-const app = express();
+const fastifyPlugin = require('fastify-plugin');
+const fastifyCors = require('fastify-cors');
 
 // Require the fastify framework and instantiate it
 const fastify = require("fastify")({
@@ -22,52 +20,80 @@ const fastify = require("fastify")({
 connectDB();
 
 // Enable CORS for API requests (adjust allowed origins as needed)
-fastify.use(cors({ origin: '*' }));
+fastify.register(fastifyCors, {
+  origin: '*'
+});
 
-// Parse incoming request bodies in JSON format
-fastify.use(bodyParser.json());
 
 //API routes defined below
-fastify.post('/employees', async (req, res) => {
-    try {
-        const newEmployee = new Employee(req.body);
-        const savedEmployee = await newEmployee.save();
-        res.status(201).json(savedEmployee);
-    } catch (error)   
- {
-        console.error('Error creating employee:', error);
-        res.status(500).json({ message:   
- 'Error creating employee' });
-    }
-});
+// Fastify MongoDB plugin
+fastify.register(fastifyPlugin(async (fastify, opts, done) => {
+  fastify.decorate('Employee', Employee);
+  done();
+}));
 
-fastify.get('/employees', async (req, res) => {
-    try {
-        const employees = await Employee.find();
-        res.json(employees);
-    } catch (error) {
-        console.error('Error fetching employees:', error);
-        res.status(500).json({   
- message: 'Error fetching employees'   
- });
-    }
-});
-
-fastify.put('/employees/:id', async (req, res) => {
+// CRUD routes
+fastify.post('/employees', async (request, reply) => {
   try {
-    const employee = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true,   
- runValidators: true });
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    res.json(employee);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message:   
- 'Server error' });
+    const newEmployee = new fastify.Employee(request.body);
+    await newEmployee.save();
+    reply.code(201).send(newEmployee);
+  } catch (err) {
+    reply.code(500).send(err);
   }
 });
 
+fastify.get('/employees', async (request, reply) => {
+  try {
+    const employees = await fastify.Employee.find();
+    reply.send(employees);
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.get('/employees/:id', async (request, reply) => {
+  try {
+    const employee = await fastify.Employee.findById(request.params.id);
+    if (employee) {
+      reply.send(employee);
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.put('/employees/:id', async (request, reply) => {
+  try {
+    const updatedEmployee = await fastify.Employee.findByIdAndUpdate(
+      request.params.id,
+      request.body,
+      { new: true }
+    );
+    if (updatedEmployee) {
+      reply.send(updatedEmployee);
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.delete('/employees/:id', async (request, reply) => {
+  try {
+    const deletedEmployee = await fastify.Employee.findByIdAndDelete(request.params.id);
+    if (deletedEmployee) {
+      reply.send({ message: 'Employee deleted' });
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
 
 
 // ADD FAVORITES ARRAY VARIABLE FROM TODO HERE
