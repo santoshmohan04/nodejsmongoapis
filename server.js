@@ -4,7 +4,6 @@
  */
 
 const path = require("path");
-const cors = require('cors');
 const connectDB = require('./db'); // Import MongoDB connection
 const Employee = require('./models/Employee'); // Import Employee model
 const fastifyPlugin = require('fastify-plugin');
