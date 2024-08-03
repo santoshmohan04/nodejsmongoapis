@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const employeeSchema = new mongoose.Schema({
+const employeeSchema = new Schema({
     id: { type: String, required: true, unique: true },
     created_time: { type: Date, required: true, default: Date.now },
     updated_time: { type: Date, required: true, default: Date.now },
@@ -17,7 +18,19 @@ const employeeSchema = new mongoose.Schema({
     address: String,
     S_No: Number,
     surname: String,
-});
+}, { collection: 'employeesdata' });
 
+const Employee = mongoose.model('Employee', employeeSchema);
 
-module.exports = mongoose.model('Employee', employeeSchema);
+async function findEmployee() {
+    try {
+        const employee = await Employee.findOne();
+        console.log(employee);
+        return employee;
+    } catch (error) {
+        console.error('Error finding employee:', error);
+        throw error;
+    }
+}
+
+module.exports = findEmployee;

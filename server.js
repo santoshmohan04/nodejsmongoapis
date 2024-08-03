@@ -1,101 +1,21 @@
-/**
- * This is the main Node.js server script for your project
- * Check out the two endpoints this back-end API provides in fastify.get and fastify.post below
- */
-
 const path = require("path");
-const connectDB = require('./db'); // Import MongoDB connection
-const Employee = require('./models/Employee'); // Import Employee model
-const fastifyPlugin = require('fastify-plugin');
 const fastifyCors = require('@fastify/cors');
-
-// Require the fastify framework and instantiate it
+require("dotenv").config();
 const fastify = require("fastify")({
   // Set this to true for detailed logging:
   logger: false,
 });
-
-// Connect to MongoDB
-connectDB();
 
 // Enable CORS for API requests (adjust allowed origins as needed)
 fastify.register(fastifyCors, {
   origin: '*'
 });
 
-
-//API routes defined below
-// Fastify MongoDB plugin
-fastify.register(fastifyPlugin(async (fastify, opts, done) => {
-  fastify.decorate('Employee', Employee);
-  done();
-}));
-
-// CRUD routes
-fastify.post('/employees', async (request, reply) => {
-  try {
-    const newEmployee = new fastify.Employee(request.body);
-    await newEmployee.save();
-    reply.code(201).send(newEmployee);
-  } catch (err) {
-    reply.code(500).send(err);
-  }
+// Register MongoDB plugin with Fastify
+fastify.register(require('@fastify/mongodb'), {
+  forceClose: true,
+  url: process.env.MONGODB_URI,
 });
-
-fastify.get('/employees', async (request, reply) => {
-  try {
-    const employees = await fastify.Employee.find();
-    reply.send(employees);
-  } catch (err) {
-    reply.code(500).send(err);
-  }
-});
-
-fastify.get('/employees/:id', async (request, reply) => {
-  try {
-    const employee = await fastify.Employee.findById(request.params.id);
-    if (employee) {
-      reply.send(employee);
-    } else {
-      reply.code(404).send({ message: 'Employee not found' });
-    }
-  } catch (err) {
-    reply.code(500).send(err);
-  }
-});
-
-fastify.put('/employees/:id', async (request, reply) => {
-  try {
-    const updatedEmployee = await fastify.Employee.findByIdAndUpdate(
-      request.params.id,
-      request.body,
-      { new: true }
-    );
-    if (updatedEmployee) {
-      reply.send(updatedEmployee);
-    } else {
-      reply.code(404).send({ message: 'Employee not found' });
-    }
-  } catch (err) {
-    reply.code(500).send(err);
-  }
-});
-
-fastify.delete('/employees/:id', async (request, reply) => {
-  try {
-    const deletedEmployee = await fastify.Employee.findByIdAndDelete(request.params.id);
-    if (deletedEmployee) {
-      reply.send({ message: 'Employee deleted' });
-    } else {
-      reply.code(404).send({ message: 'Employee not found' });
-    }
-  } catch (err) {
-    reply.code(500).send(err);
-  }
-});
-
-
-// ADD FAVORITES ARRAY VARIABLE FROM TODO HERE
 
 // Setup our static files
 fastify.register(require("@fastify/static"), {
@@ -118,6 +38,75 @@ const seo = require("./src/seo.json");
 if (seo.url === "glitch-default") {
   seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
 }
+
+// CRUD routes
+fastify.post('/employees', async (request, reply) => {
+  try {
+    const newEmployee = request.body;
+    const employeesCollection = fastify.mongo.client.db('test').collection('employeesdata');
+    const result = await employeesCollection.insertOne(newEmployee);
+    reply.code(201).send(result);
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.get('/employees', async (request, reply) => {
+  try {
+    const employeesCollection = fastify.mongo.client.db('test').collection('employeesdata');
+    const employees = await employeesCollection.find().toArray();
+    reply.send(employees);
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.get('/employees/:id', async (request, reply) => {
+  try {
+    const employeesCollection = fastify.mongo.client.db('test').collection('employeesdata');
+    const employee = await employeesCollection.findOne({ _id: new fastify.mongo.ObjectId(request.params.id) });
+    if (employee) {
+      reply.send(employee);
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.put('/employees/:id', async (request, reply) => {
+  try {
+    const employeesCollection = fastify.mongo.client.db('test').collection('employeesdata');
+    const result = await employeesCollection.findOneAndUpdate(
+      { _id: new fastify.mongo.ObjectId(request.params.id) },
+      { $set: request.body },
+      { returnDocument: 'after' }
+    );
+    if (result) {
+      reply.send(result);
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
+
+fastify.delete('/employees/:id', async (request, reply) => {
+  try {
+    const employeesCollection = fastify.mongo.client.db('test').collection('employeesdata');
+    const ObjectId = fastify.mongo.ObjectId;
+    const result = await employeesCollection.findOneAndDelete({ _id: new ObjectId(request.params.id) });
+    if (result.id) {
+      reply.send({ message: 'Employee deleted' });
+    } else {
+      reply.code(404).send({ message: 'Employee not found' });
+    }
+  } catch (err) {
+    reply.code(500).send(err);
+  }
+});
 
 /**
  * Our home page route
@@ -192,7 +181,7 @@ fastify.post("/", function (request, reply) {
 
 // Run the server and report out to the logs
 fastify.listen(
-  { port: process.env.PORT, host: "0.0.0.0" },
+  { port: process.env.PORT || 3000, host: "127.0.0.1" },
   function (err, address) {
     if (err) {
       console.error(err);
