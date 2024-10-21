@@ -137,6 +137,34 @@ fastify.get("/", function (request, reply) {
 });
 
 /**
+ * My Info page route
+ *
+ * Returns src/pages/myinfo/index.hbs with data built into it
+ */
+fastify.get("/myinfo", function (request, reply) {
+  // params is an object we'll pass to our handlebars template
+  let params = { seo: seo };
+
+  // If someone clicked the option for a random color it'll be passed in the querystring
+  if (request.query.randomize) {
+    // We need to load our color data file, pick one at random, and add it to the params
+    const colors = require("./src/colors.json");
+    const allColors = Object.keys(colors);
+    let currentColor = allColors[(allColors.length * Math.random()) << 0];
+
+    // Add the color properties to the params object
+    params = {
+      color: colors[currentColor],
+      colorError: null,
+      seo: seo,
+    };
+  }
+
+  // The Handlebars code will be able to access the parameter values and build them into the page
+  return reply.view("/src/pages/index.hbs", params);
+});
+
+/**
  * Our POST route to handle and react to form submissions
  *
  * Accepts body data indicating the user choice
